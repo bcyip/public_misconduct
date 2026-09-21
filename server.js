@@ -18,6 +18,9 @@ const { Pool } = require('pg');
 
 const PORT = process.env.PORT || 3000;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+pool.on('error', (err) => {
+  console.error('[postgres] Unexpected error on idle client - code:', err.code, '- message:', err.message);
+});
 
 const INDEX_HTML = require('fs').readFileSync(__dirname + '/index.html', 'utf8');
 
@@ -26,10 +29,13 @@ const INDEX_HTML = require('fs').readFileSync(__dirname + '/index.html', 'utf8')
 // once satisfied (see prior fix in that app for why the cap matters).
 const SUSPENSIONS_QUERY = `
   SELECT
-    e.name AS player_name,
+    ms.game_date,
     e.team_name,
+    e.name AS player_name,
+    e.reason,
     s.games_suspended,
     s.standard_games,
+    COALESCE(r.status, 'pending') AS review_status,
     LEAST(
       (SELECT COUNT(*) FROM match_report_scores mrs2
        WHERE (mrs2.team1_id = s.team_id OR mrs2.team2_id = s.team_id)
@@ -39,10 +45,11 @@ const SUSPENSIONS_QUERY = `
     ) AS games_served
   FROM suspensions s
   JOIN match_report_entries e ON e.id = s.entry_id
+  LEFT JOIN match_report_scores ms ON ms.game_id = e.game_id
   LEFT JOIN misconduct_reviews r ON r.entry_id = s.entry_id
   WHERE e.event_type = 'Red Card'
     AND (r.status IS NULL OR r.status IN ('pending', 'reviewed'))
-  ORDER BY e.name ASC
+  ORDER BY ms.game_date DESC NULLS LAST
 `;
 
 const server = http.createServer(async (req, res) => {
@@ -54,17 +61,19 @@ const server = http.createServer(async (req, res) => {
       const suspensions = result.rows.map(r => {
         const required = r.games_suspended != null ? r.games_suspended : r.standard_games;
         return {
-          playerName: r.player_name,
+          gameDate: r.game_date,
           teamName: r.team_name,
+          playerName: r.player_name,
+          reason: r.reason,
           gamesRequired: required,
           gamesServed: r.games_served,
-          eligible: r.games_served >= required,
+          reviewStatus: r.review_status, // 'pending' | 'reviewed'
         };
       });
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ suspensions }));
     } catch (err) {
-      console.error('[api/suspensions] Error:', err.message);
+      console.error('[api/suspensions] Error - code:', err.code, '- message:', err.message, '- full:', err);
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Failed to load suspensions.' }));
     }

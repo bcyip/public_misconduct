@@ -17,8 +17,8 @@
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th { text-align: left; padding: 8px 10px; background: var(--bg); border-bottom: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: 0.02em; color: var(--gray); }
   td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
-  .status-active { color: var(--danger); font-weight: 600; }
-  .status-cleared { color: var(--success); font-weight: 600; }
+  .status-pending { color: var(--gray); font-weight: 600; }
+  .status-reviewed { color: var(--success); font-weight: 600; }
   .empty, .error { padding: 20px; text-align: center; color: var(--gray); font-size: 14px; }
 </style>
 </head>
@@ -53,16 +53,18 @@
       content.innerHTML = `
         <table>
           <thead><tr>
-            <th>Player</th><th>Team</th><th>Games</th><th>Served</th><th>Status</th>
+            <th>Game Date</th><th>Team</th><th>Name</th><th>Reason</th><th>Games</th><th>Served</th><th>Status</th>
           </tr></thead>
           <tbody>
             ${suspensions.map(s => `
               <tr>
-                <td>${escapeHtml(s.playerName)}</td>
+                <td>${s.gameDate ? new Date(s.gameDate).toLocaleDateString('en-US', { timeZone: 'America/New_York' }) : '—'}</td>
                 <td>${escapeHtml(s.teamName)}</td>
+                <td>${escapeHtml(s.playerName)}</td>
+                <td>${escapeHtml(s.reason || '—')}</td>
                 <td>${escapeHtml(s.gamesRequired)}</td>
                 <td>${escapeHtml(s.gamesServed)}</td>
-                <td class="${s.eligible ? 'status-cleared' : 'status-active'}">${s.eligible ? 'Cleared' : 'Suspended'}</td>
+                <td class="${s.reviewStatus === 'reviewed' ? 'status-reviewed' : 'status-pending'}">${s.reviewStatus === 'reviewed' ? 'Reviewed' : 'Pending Review'}</td>
               </tr>
             `).join('')}
           </tbody>
