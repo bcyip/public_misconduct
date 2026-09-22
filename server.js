@@ -30,6 +30,7 @@ const INDEX_HTML = require('fs').readFileSync(__dirname + '/index.html', 'utf8')
 const SUSPENSIONS_QUERY = `
   SELECT
     ms.game_date,
+    ms.gender,
     e.team_name,
     e.name AS player_name,
     e.reason,
@@ -62,6 +63,7 @@ const server = http.createServer(async (req, res) => {
         const required = r.games_suspended != null ? r.games_suspended : r.standard_games;
         return {
           gameDate: r.game_date,
+          gender: r.gender,
           teamName: r.team_name,
           playerName: r.player_name,
           reason: r.reason,

@@ -51,12 +51,13 @@
       content.innerHTML = `
         <table>
           <thead><tr>
-            <th>Game Date</th><th>Team</th><th>Name</th><th>Reason</th><th>Games</th><th>Served</th><th>Status</th>
+            <th>Game Date</th><th>Gender</th><th>Team</th><th>Name</th><th>Reason</th><th>Games</th><th>Served</th><th>Status</th>
           </tr></thead>
           <tbody>
             ${suspensions.map(s => `
               <tr>
                 <td>${s.gameDate ? new Date(s.gameDate).toLocaleDateString('en-US', { timeZone: 'America/New_York' }) : '—'}</td>
+                <td>${escapeHtml(s.gender || '—')}</td>
                 <td>${escapeHtml(s.teamName)}</td>
                 <td>${escapeHtml(s.playerName)}</td>
                 <td>${escapeHtml(s.reason || '—')}</td>
